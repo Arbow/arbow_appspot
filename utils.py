@@ -1,6 +1,9 @@
+#coding=utf-8
+
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 import logging
+
 
 def cache_wget(url, timeout=600, cache_key=None):
     if cache_key == None:
@@ -17,3 +20,32 @@ def cache_wget(url, timeout=600, cache_key=None):
     else:
         logging.info("fetch url from cache %s" % url)
         return (200, result)
+
+def fetch_url(url, timeout=600, cache_key=None):
+    if cache_key == None:
+        cache_key = url    
+    result = urlfetch.fetch(url)
+    if result.status_code == 200:
+        logging.info("fetch url %s success, store it" % url)
+        memcache.set(cache_key, result.content, timeout, 10240)
+    else:
+        logging.info("fetch url %s failed" % url)
+    return (result.status_code, result.content)    
+
+def batch_cache_wget(url_pair_list, timeout=600):
+    """ 批量获取[(key,url),(key,url),...]的内容，返回{key:content,key:content,...}"""
+    keys = map(lambda (k,u): k, url_pair_list)
+    cached_result = memcache.get_multi(keys)
+    cached_keys = cached_result.keys()
+    max_urlfetch_times = 8
+    for k,u in url_pair_list:
+        if k not in cached_keys:
+            if max_urlfetch_times <= 0:
+                break
+            status, content = fetch_url(u, timeout=timeout, cache_key=k)
+            if status == 200:
+                cached_result[k] = content
+            max_urlfetch_times = max_urlfetch_times -1
+    return cached_result
+
+    

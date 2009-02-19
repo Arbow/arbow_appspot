@@ -42,33 +42,33 @@ class FriendsFeedHandler(webapp.RequestHandler):
                 self.response.out.write(result)
         else:
             self.response.out.write("ERROR<br/>code=%i<br/>response=%s" % (status,result))
-    
+
+    def convert_feed_content(self, content):
+        """ 将一段 feed xml 内容转换为 PyRSS2Gen 构造的 feed item列表"""
+        charset = "utf-8"
+        feed_items = []
+        feed = feedparser.parse(content)
+        for item in feed['entries']:
+            (Y,M,D,h,m,s,_,_,_) = item.updated_parsed
+            feed_item = PyRSS2Gen.RSSItem(
+                title = item.title,
+                link = item.link,
+                guid = PyRSS2Gen.Guid(item.id, isPermaLink=False),
+                description = item.summary.encode(charset),
+                pubDate = datetime.datetime(Y,M,D,h,m,s)
+            )
+            feed_items.append(feed_item)
+        return feed_items
+
     def fetch_friends_feeds(self, links):
         lastBuildDate = None
-        items = []
-        for (uid,link) in links:
-            key = "/miniblog/"+uid
-            timeout = 1500 + int(random.random() * 600)
-            status, result = utils.cache_wget(link, timeout=timeout, cache_key=key)
-            if status == 200:
-                charset = "utf-8"
-                feed = feedparser.parse(result)
-                for item in feed['entries']:
-                    (Y,M,D,h,m,s,_,_,_) = item.updated_parsed
-                    if not lastBuildDate:
-                		lastBuildDate = datetime.datetime(Y,M,D,h,m,s)
-                    feed_item = PyRSS2Gen.RSSItem(
-                        title = item.title,
-                        link = item.link,
-                        guid = PyRSS2Gen.Guid(item.id, isPermaLink=False),
-                        description = item.summary.encode(charset),
-                        pubDate = datetime.datetime(Y,M,D,h,m,s)
-                	)
-                    items.append(feed_item)
-            else:
-                logging.warn("request %s failed, status code=%i", link, status)
-        return items
-
+        all_feed_items = []
+        links_pair = map(lambda (uid,link): ("/miniblog/"+uid,link), links)
+        fetch_content_pairs = utils.batch_cache_wget(links_pair, timeout=1200)
+        for items in map(self.convert_feed_content, fetch_content_pairs.values()):
+            all_feed_items = all_feed_items + items
+        return all_feed_items
+    
     def parse_friends(self, content):
         xmldoc = minidom.parseString(content)
         name = xmldoc.getElementsByTagName('name')[0].childNodes[0].data.encode('utf-8')
