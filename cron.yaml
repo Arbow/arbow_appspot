@@ -1,0 +1,4 @@
+cron:
+- description: refresh feeds job
+  url: /feeds/refresh
+  schedule: every 1 minutes

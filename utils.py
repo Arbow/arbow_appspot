@@ -1,10 +1,14 @@
 #coding=utf-8
 
+from google.appengine.ext import db
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 import logging
+import feed
 
+feed_manager = feed.FeedManager()
 
+#urlfetch一个链接，当缓存中存在时马上返回
 def cache_wget(url, timeout=600, cache_key=None):
     if cache_key == None:
         cache_key = url
@@ -37,15 +41,22 @@ def batch_cache_wget(url_pair_list, timeout=600):
     keys = map(lambda (k,u): k, url_pair_list)
     cached_result = memcache.get_multi(keys)
     cached_keys = cached_result.keys()
-    max_urlfetch_times = 8
     for k,u in url_pair_list:
         if k not in cached_keys:
-            if max_urlfetch_times <= 0:
-                break
-            status, content = fetch_url(u, timeout=timeout, cache_key=k)
-            if status == 200:
-                cached_result[k] = content
-            max_urlfetch_times = max_urlfetch_times -1
+            #cache没命中，加入到db中
+            feed_manager.add_new_feed(k,u)
     return cached_result
 
+def refresh_feeds(max_size=10):
+    feeds = feed_manager.fetch_need_update_feeds(max_size)
+    keys = map(lambda f:f.cacheKey, feeds)
+    logging.info("refresh batch feeds: ", keys)
+    updated_feeds = []
+    for feed in feeds:
+        status, content = fetch_url(feed.url, cache_key=feed.cacheKey)
+        if status == 200:
+            feed.content = db.Text(content, encoding="utf8")
+            updated_feeds.append(feed)
+    feed_manager.batch_update_feeds(updated_feeds)
+    
     

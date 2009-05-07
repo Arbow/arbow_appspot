@@ -97,11 +97,17 @@ class FriendsFeedHandler(webapp.RequestHandler):
         )
         self.response.headers['Content-Type'] = 'text/xml'
         self.response.out.write(rss.to_xml(encoding=charset))
-        
+
+
+class FeedRefreshHandler(webapp.RequestHandler):
+    def get(self):        
+        utils.refresh_feeds()
+        self.response.headers['Content-Type'] = 'text/plain'
+        self.response.out.write('ok')
 
 def main():
     application = webapp.WSGIApplication(
-        [('/feeds/douban/.*', FriendsFeedHandler)], debug=True
+        [('/feeds/douban/.*', FriendsFeedHandler),('/feeds/refresh', FeedRefreshHandler)], debug=True
     )
     wsgiref.handlers.CGIHandler().run(application)
 
