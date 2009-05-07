@@ -43,14 +43,16 @@ def batch_cache_wget(url_pair_list, timeout=600):
     cached_keys = cached_result.keys()
     for k,u in url_pair_list:
         if k not in cached_keys:
-            #cache没命中，加入到db中
-            feed_manager.add_new_feed(k,u)
+            content = feed_manager.fetch_feed_content_by_cachekey(k,u)
+            if content != None:
+                memcache.set(k, content, timeout, 10240)
+                cached_result[k] = content
     return cached_result
 
 def refresh_feeds(max_size=10):
     feeds = feed_manager.fetch_need_update_feeds(max_size)
     keys = map(lambda f:f.cacheKey, feeds)
-    logging.info("refresh batch feeds: ", keys)
+    #logging.info("refresh batch feeds: %s" % str(keys))
     updated_feeds = []
     for feed in feeds:
         status, content = fetch_url(feed.url, cache_key=feed.cacheKey)

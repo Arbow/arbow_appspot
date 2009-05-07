@@ -20,7 +20,8 @@ class FeedManager(object):
             default_content = db.Text("", encoding="utf8")
             feed = DoubanFeed(url=feed_url,cacheKey=cache_key,content=default_content,refreshTime=datetime(2000, 1, 1))
             feed.put()
-            logging.info("add feed item to datastore, url=",feed_url)
+            logging.info("add feed item to datastore, url=%s" % feed_url)
+            return True
     
     def fetch_feed_content(self, feed_url):
         query = db.GqlQuery("SELECT * FROM DoubanFeed WHERE url = :1", feed_url)
@@ -31,13 +32,13 @@ class FeedManager(object):
             add_new_feed(feed_url)
             return None
         
-    def fetch_feed_content_by_cachekey(self, key):
+    def fetch_feed_content_by_cachekey(self, key, url):
         query = db.GqlQuery("SELECT * FROM DoubanFeed WHERE cacheKey = :1", key)
         if query.count() > 0:
             feed = query.get()
             return feed.content
         else:
-            add_new_feed(feed_url)
+            self.add_new_feed(key, url)
             return None
     
     def fetch_need_update_feeds(self, max_size):
