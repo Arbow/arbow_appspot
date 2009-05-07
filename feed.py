@@ -41,7 +41,7 @@ class FeedManager(object):
             return None
     
     def fetch_need_update_feeds(self, max_size):
-        return db.Query(DoubanFeed).order('-refreshTime').fetch(max_size)
+        return db.Query(DoubanFeed).order('refreshTime').fetch(max_size)
     
     def batch_update_feeds(self, feeds):
         now = datetime.now()
