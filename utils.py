@@ -36,7 +36,7 @@ def fetch_url(url, timeout=600, cache_key=None):
         logging.info("fetch url %s failed" % url)
     return (result.status_code, result.content)    
 
-def batch_cache_wget(url_pair_list, timeout=600):
+def batch_cache_wget(url_pair_list, timeout=3600):
     """ 批量获取[(key,url),(key,url),...]的内容，返回{key:content,key:content,...}"""
     keys = map(lambda (k,u): k, url_pair_list)
     cached_result = memcache.get_multi(keys)
@@ -55,7 +55,7 @@ def refresh_feeds(max_size=10):
     #logging.info("refresh batch feeds: %s" % str(keys))
     updated_feeds = []
     for feed in feeds:
-        status, content = fetch_url(feed.url, cache_key=feed.cacheKey)
+        status, content = fetch_url(feed.url, timeout=3600, cache_key=feed.cacheKey)
         if status == 200:
             feed.content = db.Text(content, encoding="utf8")
             updated_feeds.append(feed)

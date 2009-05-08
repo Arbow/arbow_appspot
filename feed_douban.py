@@ -64,7 +64,7 @@ class FriendsFeedHandler(webapp.RequestHandler):
         lastBuildDate = None
         all_feed_items = []
         links_pair = map(lambda (uid,link): ("/miniblog/"+uid,link), links)
-        fetch_content_pairs = utils.batch_cache_wget(links_pair, timeout=1200)
+        fetch_content_pairs = utils.batch_cache_wget(links_pair)
         for items in map(self.convert_feed_content, fetch_content_pairs.values()):
             all_feed_items = all_feed_items + items
         return all_feed_items
